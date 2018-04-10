@@ -1,6 +1,7 @@
 package commit
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io/ioutil"
 	"os"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/decosblockchain/audittrail-server/config"
 	"github.com/decosblockchain/audittrail-server/logging"
+	"github.com/decosblockchain/audittrail-server/wallet"
 
 	"github.com/cbergoon/merkletree"
 	"github.com/onrik/ethrpc"
@@ -74,12 +76,13 @@ func CommitToMasterChain() error {
 		committingMutex.Unlock()
 		return err
 	}
-	currentBlock := uint64(block)
-	logging.Info.Printf("Currently at block %d, last commit was at %d\n", currentBlock, lastCommit)
+	endBlock := uint64(block) - 30 // Due to possible reorgs, only commit blocks that have 30+ confirmations
+
+	logging.Info.Printf("Currently at block %d, last commit was at %d\n", endBlock+30, lastCommit)
 	interval := config.CommitInterval()
 
-	if (currentBlock - lastCommit) >= interval {
-		endBlock := min(currentBlock, lastCommit+interval)
+	if (endBlock - lastCommit) >= interval {
+		endBlock := min(endBlock, lastCommit+interval)
 		logging.Info.Println("Committing to master chain")
 		blockHashes := []merkletree.Content{}
 		for i := lastCommit + 1; i <= endBlock; i++ {
@@ -100,6 +103,14 @@ func CommitToMasterChain() error {
 		mr := t.MerkleRoot()
 
 		logging.Info.Printf("Merkle root of block segment: %x\n", mr)
+		err := commitMerkleRoot(lastCommit+1, endBlock, mr)
+		if err != nil {
+			committingMutex.Lock()
+			committing = false
+			committingMutex.Unlock()
+			return err
+		}
+
 		writeLastCommit(endBlock)
 
 	} else {
@@ -109,6 +120,32 @@ func CommitToMasterChain() error {
 	committingMutex.Lock()
 	committing = false
 	committingMutex.Unlock()
+
+	return nil
+}
+
+func commitMerkleRoot(startBlock, endBlock uint64, merkleRoot []byte) error {
+	var buf bytes.Buffer
+
+	binary.Write(&buf, binary.BigEndian, startBlock)
+	binary.Write(&buf, binary.BigEndian, endBlock)
+	buf.Write(merkleRoot[:])
+
+	tx, err := wallet.CreateNullDataTransaction(buf.Bytes())
+	if err != nil {
+		return err
+	}
+	signedTx, err := wallet.SignTransaction(tx)
+	if err != nil {
+		return err
+	}
+
+	hash, err := wallet.SendTransaction(signedTx)
+	if err != nil {
+		return err
+	}
+
+	logging.Info.Printf("Committed to master chain succesfully. TX hash: %s", hash.String())
 
 	return nil
 }

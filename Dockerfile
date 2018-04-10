@@ -17,6 +17,8 @@ WORKDIR /app
 RUN cd /app
 COPY --from=build /usr/local/go/src/github.com/decosblockchain/audittrail-server/audittrail-server /app/bin/audittrail-server
 
+RUN mkdir -p /app/bin/data
+
 EXPOSE 3000
 WORKDIR /app/bin
 

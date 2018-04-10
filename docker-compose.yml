@@ -1,28 +1,18 @@
 version: "2"
 services:
 
-  audittrail-node:
-    image: audittrail-node
-    restart: always
-    expose:
-      - "8000"
-    volumes:
-      - ./data:/data/blockchain
-    environment:
-      - MINERIP=172.30.0.3
-    networks:
-      vpcbr:
-        ipv4_address: 172.30.0.3
-
   audittrail-server:
     image: audittrail-server
-    depends_on:
-      - audittrail-node
     restart: always
+    volumes:
+      - ./serverdata:/app/bin/data
     expose: 
       - "3000"
     environment:
-      - ETHNODE=http://172.30.0.3:8000/
+      - ETHNODE=http://172.30.0.1:8000/
+      - BTCNODE=172.30.0.1:8332
+      - BTCRPCUSER=bitcoin
+      - BTCRPCPASS=bitcoin
     networks:
       vpcbr:
         ipv4_address: 172.30.0.2
@@ -30,7 +20,6 @@ services:
   audittrail-client:
     image: audittrail-client
     depends_on:
-      - audittrail-node
       - audittrail-server
     volumes:
       - ./clientdata:/app/bin/data

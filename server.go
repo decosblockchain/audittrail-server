@@ -9,11 +9,14 @@ import (
 	"github.com/decosblockchain/audittrail-server/commit"
 	"github.com/decosblockchain/audittrail-server/logging"
 	"github.com/decosblockchain/audittrail-server/routes"
+	"github.com/decosblockchain/audittrail-server/wallet"
 	"github.com/gorilla/mux"
 )
 
 func main() {
 	logging.Init(os.Stdout, os.Stdout, os.Stdout, os.Stdout)
+
+	wallet.Init()
 
 	ticker := time.NewTicker(15 * time.Second)
 	go func() {

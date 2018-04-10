@@ -16,3 +16,4 @@
 #docker datadir
 data/
 clientdata/
+serverdata/
