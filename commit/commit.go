@@ -19,10 +19,10 @@ var committingMutex = &sync.Mutex{}
 
 func readLastCommit() (uint64, error) {
 	lastCommit := uint64(0)
-	if _, err := os.Stat("data/nonce.hex"); os.IsNotExist(err) {
+	if _, err := os.Stat("data/lastcommit.hex"); os.IsNotExist(err) {
 		return lastCommit, nil
 	}
-	b, err := ioutil.ReadFile("data/nonce.hex")
+	b, err := ioutil.ReadFile("data/lastcommit.hex")
 	if err != nil {
 		return lastCommit, err
 	}
@@ -35,7 +35,7 @@ func writeLastCommit(lastCommit uint64) error {
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, lastCommit)
 
-	err := ioutil.WriteFile("lastcommit.hex", b, 0600)
+	err := ioutil.WriteFile("data/lastcommit.hex", b, 0600)
 	return err
 }
 

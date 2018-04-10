@@ -18,5 +18,6 @@ RUN cd /app
 COPY --from=build /usr/local/go/src/github.com/decosblockchain/audittrail-server/audittrail-server /app/bin/audittrail-server
 
 EXPOSE 3000
+WORKDIR /app/bin
 
-CMD ["bin/audittrail-server"]
+CMD ["./audittrail-server"]
