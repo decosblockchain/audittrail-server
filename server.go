@@ -23,7 +23,7 @@ func main() {
 				if err != nil {
 					logging.Error.Printf("Error committing to master chain: %s", err.Error())
 				}
-			}
+			}()
 		}
 	}()
 
