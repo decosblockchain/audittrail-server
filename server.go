@@ -18,9 +18,11 @@ func main() {
 	ticker := time.NewTicker(15 * time.Second)
 	go func() {
 		for range ticker.C {
-			err := commit.CommitToMasterChain()
-			if err != nil {
-				logging.Error.Printf("Error committing to master chain: %s", err.Error())
+			go func() {
+				err := commit.CommitToMasterChain()
+				if err != nil {
+					logging.Error.Printf("Error committing to master chain: %s", err.Error())
+				}
 			}
 		}
 	}()
