@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 
 	"github.com/cbergoon/merkletree"
+	"github.com/decosblockchain/audittrail-server/logging"
 )
 
 type BlockHashContent struct {
@@ -11,7 +12,11 @@ type BlockHashContent struct {
 }
 
 func (b BlockHashContent) CalculateHash() []byte {
-	bytes, _ := hex.DecodeString(b.BlockHash)
+	bytes, err := hex.DecodeString(b.BlockHash[2:])
+	if err != nil {
+		logging.Error.Printf("Error decoding blockhash %s\n", b.BlockHash)
+	}
+
 	return bytes
 }
 
