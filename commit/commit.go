@@ -84,26 +84,13 @@ func CommitToMasterChain() error {
 	if (endBlock - lastCommit) >= interval {
 		endBlock := min(endBlock, lastCommit+interval)
 		logging.Info.Println("Committing to master chain")
-		blockHashes := []merkletree.Content{}
-		for i := lastCommit + 1; i <= endBlock; i++ {
-			block, err := client.EthGetBlockByNumber(int(i), false)
-			if err != nil {
-				committingMutex.Lock()
-				committing = false
-				committingMutex.Unlock()
-				return err
-			}
-			blockHashes = append(blockHashes, BlockHashContent{BlockHash: block.Hash})
 
-			if i%50 == 0 {
-				logging.Info.Printf("Fetching blockhashes [block %d]...", i)
-			}
-		}
+		blockHashes, err := GetBlockHashes(lastCommit+1, endBlock)
 		t, _ := merkletree.NewTree(blockHashes)
 		mr := t.MerkleRoot()
 
 		logging.Info.Printf("Merkle root of block segment: %x\n", mr)
-		err := commitMerkleRoot(lastCommit+1, endBlock, mr)
+		err = commitMerkleRoot(lastCommit+1, endBlock, mr)
 		if err != nil {
 			committingMutex.Lock()
 			committing = false
@@ -148,4 +135,21 @@ func commitMerkleRoot(startBlock, endBlock uint64, merkleRoot []byte) error {
 	logging.Info.Printf("Committed to master chain succesfully. TX hash: %s", hash.String())
 
 	return nil
+}
+
+func GetBlockHashes(startBlock, endBlock uint64) ([]merkletree.Content, error) {
+	client := ethrpc.New(config.EthNode())
+
+	blockHashes := []merkletree.Content{}
+	for i := startBlock; i <= endBlock; i++ {
+		block, err := client.EthGetBlockByNumber(int(i), false)
+		if err != nil {
+			committingMutex.Lock()
+			committing = false
+			committingMutex.Unlock()
+			return blockHashes, err
+		}
+		blockHashes = append(blockHashes, BlockHashContent{BlockHash: block.Hash})
+	}
+	return blockHashes, nil
 }

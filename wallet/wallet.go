@@ -13,12 +13,12 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/decosblockchain/audittrail-server/config"
 	"github.com/decosblockchain/audittrail-server/logging"
+	"github.com/gertjaap/btcd/rpcclient"
 )
 
 var keyMutex = &sync.Mutex{}
@@ -70,6 +70,17 @@ func GetAddress() (btcutil.Address, error) {
 	return addressPubKey, err
 }
 
+func GetHash160() ([]byte, error) {
+	var addressHash []byte
+	pubKey, err := getPubKey()
+	if err != nil {
+		return addressHash, err
+	}
+
+	addressHash = btcutil.Hash160(pubKey.SerializeCompressed())
+	return addressHash, nil
+}
+
 func Init() {
 	address, err := GetAddress()
 	if err != nil {
@@ -78,7 +89,7 @@ func Init() {
 	logging.Info.Printf("My address on the public blockchain is: %s", address.EncodeAddress())
 }
 
-func getRpcClient() (*rpcclient.Client, error) {
+func GetRpcClient() (*rpcclient.Client, error) {
 	// Connect to local bitcoin core RPC server using HTTP POST mode.
 	connCfg := &rpcclient.ConnConfig{
 		Host:         config.BtcNode(),
@@ -102,7 +113,7 @@ func getRpcClient() (*rpcclient.Client, error) {
 func GetTxIns(neededAmount uint64) ([]*wire.TxIn, int64, error) {
 
 	leftoverAmount := int64(neededAmount)
-	client, err := getRpcClient()
+	client, err := GetRpcClient()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -164,13 +175,13 @@ func CreateNullDataTransaction(payload []byte) (*wire.MsgTx, error) {
 	if change > 0 {
 		// Add change output
 
-		address, err := GetAddress()
+		hash, err := GetHash160()
 		if err != nil {
 			return nil, err
 		}
 
 		builder := txscript.NewScriptBuilder()
-		builder.AddOp(txscript.OP_DUP).AddOp(txscript.OP_HASH160).AddData(address.ScriptAddress()).AddOp(txscript.OP_EQUALVERIFY).AddOp(txscript.OP_CHECKSIG)
+		builder.AddOp(txscript.OP_DUP).AddOp(txscript.OP_HASH160).AddData(hash).AddOp(txscript.OP_EQUALVERIFY).AddOp(txscript.OP_CHECKSIG)
 		chgScript, _ := builder.Script()
 		tx.AddTxOut(wire.NewTxOut(change, chgScript))
 	}
@@ -199,7 +210,7 @@ func SignTransaction(tx *wire.MsgTx) (*wire.MsgTx, error) {
 func SendTransaction(tx *wire.MsgTx) (*chainhash.Hash, error) {
 	nullHash, _ := chainhash.NewHashFromStr("")
 
-	client, err := getRpcClient()
+	client, err := GetRpcClient()
 	if err != nil {
 		return nullHash, err
 	}

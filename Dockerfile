@@ -6,6 +6,9 @@ ENV GOROOT=/usr/local/go
 RUN go get -v github.com/onrik/ethrpc
 RUN go get -v github.com/gorilla/mux
 RUN go get -v github.com/kardianos/service
+RUN go get -v github.com/btcsuite/btcd
+RUN go get -v github.com/cbergoon/merkletree
+
 COPY . /usr/local/go/src/github.com/decosblockchain/audittrail-server
 WORKDIR /usr/local/go/src/github.com/decosblockchain/audittrail-server
 RUN go get -v ./...
