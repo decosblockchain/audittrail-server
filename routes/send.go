@@ -1,13 +1,11 @@
 package routes
 
 import (
-	"encoding/hex"
+	"bytes"
 	"io/ioutil"
 	"net/http"
 
-	"github.com/decosblockchain/audittrail-server/config"
 	"github.com/decosblockchain/audittrail-server/logging"
-	"github.com/onrik/ethrpc"
 )
 
 func SendHandler(w http.ResponseWriter, r *http.Request) {
@@ -19,21 +17,32 @@ func SendHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	client := ethrpc.New(config.EthNode())
 
-	bytes, err := ioutil.ReadAll(r.Body)
+	incomingBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		logging.Error.Printf("%s\n", err.Error())
 	}
 
-	hexTx := "0x" + hex.EncodeToString(bytes)
-	logging.Info.Printf("Received TX: %s", hexTx)
+	buffer := new(bytes.Buffer)
+	buffer.Write([]byte("{\"method\":\"sendrawtransaction\",\"params\":["))
+	buffer.Write(incomingBytes)
+	buffer.Write([]byte("],\"id\":0,\"jsonrpc\":\"2.0\"}"))
 
-	_, err = client.EthSendRawTransaction(hexTx)
+	logging.Info.Printf("Sending to CK RPC:\n%s", string(buffer.Bytes()))
+
+	req, err := http.NewRequest("POST", "http://localhost:8384/", bytes.NewReader(buffer.Bytes()))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
-		logging.Error.Printf("%s\n", err.Error())
+		logging.Error.Printf("Error calling server: %s\n", err.Error())
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	defer resp.Body.Close()
+
 	w.WriteHeader(http.StatusCreated)
 }
